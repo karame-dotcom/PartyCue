@@ -6,6 +6,7 @@ import { FirebaseModal } from './FirebaseModal';
 import { AIScoreScreen } from './AIScoreScreen';
 import { PartyEffectsOverlay } from './PartyEffectsOverlay';
 import { ThemeStageVisuals } from './ThemeStageVisuals';
+import { SongIntroScreen } from './SongIntroScreen';
 import { useKaraokeRoom } from '../hooks/useKaraokeRoom';
 import { useTopHits } from '../hooks/useTopHits';
 import { playAirhorn, playApplause, playFanfare } from '../utils/audioEffects';
@@ -88,6 +89,20 @@ export const HostScreen: React.FC<HostScreenProps> = ({ roomId }) => {
   const queue = roomState?.queue || [];
   const nextSong = queue.length > 0 ? queue[0] : null;
   const previousSongs = roomState?.history || [];
+
+  // "Now Singing" intro card with countdown before each new song starts playing
+  const [introSongId, setIntroSongId] = useState<string | null>(null);
+  const lastIntroIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = currentSong?.id || null;
+    if (id && id !== lastIntroIdRef.current) {
+      lastIntroIdRef.current = id;
+      setIntroSongId(id);
+    } else if (!id) {
+      setIntroSongId(null);
+    }
+  }, [currentSong?.id]);
+  const showIntro = !!currentSong && introSongId === currentSong.id;
 
   // Auto-Fullscreen on song start
   useEffect(() => {
@@ -313,6 +328,7 @@ export const HostScreen: React.FC<HostScreenProps> = ({ roomId }) => {
           <div className="w-full flex-1 min-h-0 flex flex-col justify-center">
             <YouTubePlayer
               currentSong={currentSong}
+              holdPlayback={showIntro}
               onEnded={handleSongEnded}
               onSkip={skipSong}
               onReplay={replaySong}
@@ -531,14 +547,26 @@ export const HostScreen: React.FC<HostScreenProps> = ({ roomId }) => {
         </aside>
       </main>
 
-      {/* AI Performance Score Overlay Screen (Competition Mode: 12s 2-stage dramatic progression) */}
+      {/* Now Singing intro: singer + song over the TV theme, 5s countdown, then playback starts */}
+      {showIntro && currentSong && !scoringData && (
+        <SongIntroScreen
+          song={currentSong}
+          theme={roomState?.tvBackground}
+          themeBg={themeStyle.bg}
+          themeGlow={themeStyle.glow}
+          seconds={5}
+          onDone={() => setIntroSongId(null)}
+        />
+      )}
+
+      {/* AI Performance Score Overlay Screen (Competition Mode: 5s score + 5s ranking) */}
       {scoringData && (
         <AIScoreScreen
           song={scoringData.song}
           scoreResult={scoringData.scoreResult}
           leaderboard={roomState?.leaderboard || []}
           onComplete={handleScoreComplete}
-          durationSeconds={12}
+          durationSeconds={10}
         />
       )}
 

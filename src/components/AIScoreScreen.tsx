@@ -32,7 +32,7 @@ export const AIScoreScreen: React.FC<AIScoreScreenProps> = ({
   scoreResult,
   leaderboard = [],
   onComplete,
-  durationSeconds = 12,
+  durationSeconds = 10,
 }) => {
   const [timeLeft, setTimeLeft] = useState(durationSeconds);
   const [stage, setStage] = useState<1 | 2>(1);
@@ -100,7 +100,7 @@ export const AIScoreScreen: React.FC<AIScoreScreenProps> = ({
         origin: { y: 0.4 },
         colors: ['#fbbf24', '#38bdf8', '#f43f5e', '#a855f7'],
       });
-    }, 5500);
+    }, Math.round((durationSeconds * 1000) / 2));
 
     // Countdown timer for automatic transition
     const countdown = setInterval(() => {
@@ -181,7 +181,7 @@ export const AIScoreScreen: React.FC<AIScoreScreenProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* STAGE 1: SCORE & DETAILED PERFORMANCE BREAKDOWN (FIRST 5.5s) */}
+        {/* STAGE 1: SCORE & DETAILED PERFORMANCE BREAKDOWN (FIRST HALF, ~5s) */}
         {/* ========================================================================= */}
         {stage === 1 && (
           <div className="space-y-4 animate-in fade-in slide-in-from-left duration-300">
@@ -301,7 +301,7 @@ export const AIScoreScreen: React.FC<AIScoreScreenProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* STAGE 2: DRAMATIC RANKING UPDATE & HALL OF FAME LEADERBOARD (NEXT 5.5s) */}
+        {/* STAGE 2: DRAMATIC RANKING UPDATE & HALL OF FAME LEADERBOARD (SECOND HALF, ~5s) */}
         {/* ========================================================================= */}
         {stage === 2 && (
           <div className="space-y-4 animate-in fade-in slide-in-from-right duration-300">

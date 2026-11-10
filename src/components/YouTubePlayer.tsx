@@ -11,6 +11,8 @@ interface YouTubePlayerProps {
   isHostAdmin?: boolean;
   isStarred?: boolean;
   onToggleStar?: () => void;
+  /** While true, the current song is loaded but kept paused (e.g. during the intro countdown). */
+  holdPlayback?: boolean;
 }
 
 export interface YTPlayerInstance {
@@ -68,6 +70,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   isHostAdmin = true,
   isStarred = false,
   onToggleStar,
+  holdPlayback = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayerInstance | null>(null);
@@ -79,6 +82,8 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState<boolean>(false);
   const hasTriggeredEndRef = useRef<boolean>(false);
+  const holdRef = useRef<boolean>(holdPlayback);
+  holdRef.current = holdPlayback;
 
   // Load YouTube iFrame API script once
   useEffect(() => {
@@ -108,7 +113,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
       playerRef.current = new window.YT.Player('karaoke-yt-player', {
         videoId: currentSong.videoId,
         playerVars: {
-          autoplay: 1,
+          autoplay: holdRef.current ? 0 : 1,
           controls: 0, // Custom arcade controls
           modestbranding: 1,
           rel: 0,
@@ -122,6 +127,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
           onReady: (event: { target: unknown }) => {
             const player = event.target as YTPlayerInstance;
             player?.setVolume(volume);
+            if (holdRef.current) return;
             player?.playVideo();
             setIsPlaying(true);
           },
@@ -162,15 +168,29 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
       });
     } else {
       // Player already exists, load new video
-      playerRef.current.loadVideoById(currentSong.videoId);
-      playerRef.current.playVideo();
-      setIsPlaying(true);
+      if (holdRef.current) {
+        playerRef.current.cueVideoById(currentSong.videoId);
+        setIsPlaying(false);
+      } else {
+        playerRef.current.loadVideoById(currentSong.videoId);
+        playerRef.current.playVideo();
+        setIsPlaying(true);
+      }
     }
 
     return () => {
       // Do not destroy continuously between tracks for smoother transition
     };
   }, [currentSong?.id, currentSong?.videoId, isReady]);
+
+  // Start playback as soon as the hold (intro countdown) is released
+  useEffect(() => {
+    if (holdPlayback || !currentSong || !playerRef.current) return;
+    try {
+      playerRef.current.playVideo();
+      setIsPlaying(true);
+    } catch {}
+  }, [holdPlayback, currentSong?.id]);
 
   // Clean destroy on unmount
   useEffect(() => {
