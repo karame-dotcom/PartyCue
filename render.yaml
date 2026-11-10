@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: partycue
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/rooms/HEALTH
+    envVars:
+      - key: NODE_VERSION
+        value: "22.20.0"
+      - key: GEMINI_API_KEY
+        sync: false

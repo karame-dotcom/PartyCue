@@ -1,0 +1,8 @@
+{
+  "name": "KaraokeBox Live - Multi-Device YouTube Karaoke System",
+  "description": "Interactive multi-device Karaoke system with TV host display player, real-time sync queue, and mobile guest remote for queuing verified songs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
