@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Mic2 } from 'lucide-react';
 import { KaraokeSong } from '../types/karaoke';
 import { ThemeStageVisuals } from './ThemeStageVisuals';
-import { playFanfare } from '../utils/audioEffects';
 
 interface SongIntroScreenProps {
   song: KaraokeSong;
@@ -37,7 +36,6 @@ export const SongIntroScreen: React.FC<SongIntroScreenProps> = ({
       const left = seconds - Math.floor((Date.now() - startedAt) / 1000);
       if (left <= 0) {
         clearInterval(timer);
-        playFanfare();
         onDoneRef.current();
       } else {
         setCount(left);

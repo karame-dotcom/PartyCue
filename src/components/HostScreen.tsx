@@ -90,19 +90,10 @@ export const HostScreen: React.FC<HostScreenProps> = ({ roomId }) => {
   const nextSong = queue.length > 0 ? queue[0] : null;
   const previousSongs = roomState?.history || [];
 
-  // "Now Singing" intro card with countdown before each new song starts playing
-  const [introSongId, setIntroSongId] = useState<string | null>(null);
-  const lastIntroIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    const id = currentSong?.id || null;
-    if (id && id !== lastIntroIdRef.current) {
-      lastIntroIdRef.current = id;
-      setIntroSongId(id);
-    } else if (!id) {
-      setIntroSongId(null);
-    }
-  }, [currentSong?.id]);
-  const showIntro = !!currentSong && introSongId === currentSong.id;
+  // "Now Singing" intro card with countdown before each new song starts playing.
+  // Derived synchronously so the very first render of a new song already holds playback.
+  const [introDoneId, setIntroDoneId] = useState<string | null>(null);
+  const showIntro = !!currentSong && introDoneId !== currentSong.id;
 
   // Auto-Fullscreen on song start
   useEffect(() => {
@@ -555,7 +546,7 @@ export const HostScreen: React.FC<HostScreenProps> = ({ roomId }) => {
           themeBg={themeStyle.bg}
           themeGlow={themeStyle.glow}
           seconds={5}
-          onDone={() => setIntroSongId(null)}
+          onDone={() => setIntroDoneId(currentSong.id)}
         />
       )}
 

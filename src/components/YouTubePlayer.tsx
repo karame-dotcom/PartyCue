@@ -81,6 +81,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   const [duration, setDuration] = useState<number>(0);
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState<boolean>(false);
+  const [autoplayMuted, setAutoplayMuted] = useState<boolean>(false);
   const hasTriggeredEndRef = useRef<boolean>(false);
   const holdRef = useRef<boolean>(holdPlayback);
   holdRef.current = holdPlayback;
@@ -183,14 +184,41 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     };
   }, [currentSong?.id, currentSong?.videoId, isReady]);
 
-  // Start playback as soon as the hold (intro countdown) is released
+  // Start playback as soon as the hold (intro countdown) is released.
+  // If the browser blocks autoplay with sound, fall back to muted playback + "tap to unmute".
   useEffect(() => {
     if (holdPlayback || !currentSong || !playerRef.current) return;
+    const player = playerRef.current;
     try {
-      playerRef.current.playVideo();
+      player.playVideo();
       setIsPlaying(true);
     } catch {}
+    const check = setTimeout(() => {
+      try {
+        const state = player.getPlayerState();
+        // 1 = playing, 3 = buffering
+        if (state !== 1 && state !== 3) {
+          player.mute();
+          setIsMuted(true);
+          setAutoplayMuted(true);
+          player.playVideo();
+          setIsPlaying(true);
+        }
+      } catch {}
+    }, 1500);
+    return () => clearTimeout(check);
   }, [holdPlayback, currentSong?.id]);
+
+  const handleUnmuteAfterAutoplay = () => {
+    if (!playerRef.current) return;
+    try {
+      playerRef.current.unMute();
+      playerRef.current.setVolume(volume || 80);
+      playerRef.current.playVideo();
+    } catch {}
+    setIsMuted(false);
+    setAutoplayMuted(false);
+  };
 
   // Clean destroy on unmount
   useEffect(() => {
@@ -293,6 +321,17 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         <div ref={containerRef} className="w-full h-full">
           <div id="karaoke-yt-player" className="w-full h-full" />
         </div>
+
+        {/* Browser blocked autoplay with sound: video plays muted until someone taps */}
+        {autoplayMuted && currentSong && (
+          <button
+            onClick={handleUnmuteAfterAutoplay}
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-arcade font-bold text-sm uppercase tracking-wider shadow-2xl animate-pulse"
+          >
+            <VolumeX className="w-4 h-4" />
+            Tap to turn sound on
+          </button>
+        )}
 
         {/* Stage Idle Screen (Rendered as overlay when stage is free, seamlessly auto-clears when 1st song is queued) */}
         {!currentSong && (
