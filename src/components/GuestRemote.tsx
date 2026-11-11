@@ -163,6 +163,50 @@ export const GuestRemote: React.FC<GuestRemoteProps> = ({ roomId }) => {
   // Singer name state (persisted)
   const [singerName, setSingerName] = useState(() => getSavedSingerName() || '');
 
+  // Saved singers on this phone, so one phone can switch between people quickly
+  const SINGER_LIST_KEY = 'karaoke_saved_singers';
+  const [savedSingers, setSavedSingers] = useState<string[]>(() => {
+    try {
+      const list = JSON.parse(localStorage.getItem('karaoke_saved_singers') || '[]');
+      return Array.isArray(list) ? list.filter((n) => typeof n === 'string' && n.trim()) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showSingerList, setShowSingerList] = useState(false);
+  const persistSingers = (list: string[]) => {
+    setSavedSingers(list);
+    try {
+      localStorage.setItem(SINGER_LIST_KEY, JSON.stringify(list));
+    } catch {}
+  };
+  const rememberSinger = (name: string) => {
+    const clean = name.trim();
+    if (!clean) return;
+    persistSingers([clean, ...savedSingers.filter((n) => n.toLowerCase() !== clean.toLowerCase())].slice(0, 30));
+  };
+  const confirmSinger = () => {
+    const clean = singerName.trim();
+    if (!clean) return;
+    setSingerName(clean);
+    saveSingerName(clean);
+    rememberSinger(clean);
+    setShowSingerList(false);
+    showToast(`🎤 Singer set to ${clean}`);
+  };
+  const selectSinger = (name: string) => {
+    setSingerName(name);
+    saveSingerName(name);
+    rememberSinger(name);
+    setShowSingerList(false);
+    showToast(`🎤 Now singing: ${name}`);
+  };
+  const removeSavedSinger = (name: string) => {
+    const next = savedSingers.filter((n) => n !== name);
+    persistSingers(next);
+    if (next.length === 0) setShowSingerList(false);
+  };
+
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -426,6 +470,7 @@ export const GuestRemote: React.FC<GuestRemoteProps> = ({ roomId }) => {
     }
 
     saveSingerName(currentSinger);
+    rememberSinger(currentSinger);
     setIsSubmitting(true);
 
     try {
@@ -769,28 +814,103 @@ export const GuestRemote: React.FC<GuestRemoteProps> = ({ roomId }) => {
               </div>
             )}
 
-            {/* Singer Name Input (Always at top) */}
-            <div className="p-2.5 rounded-xl bg-[#0e142a] border border-[#1b2548] space-y-1">
+            {/* Singer Name Input (Always at top) with confirm, clear and a saved-singers dropdown */}
+            <div className="p-2.5 rounded-xl bg-[#0e142a] border border-[#1b2548] space-y-1.5">
               <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-sky-400" />
                   <span>Who is singing? (Singer Name)</span>
                 </span>
-                {singerName && (
+                {singerName.trim() && savedSingers.some((n) => n.toLowerCase() === singerName.trim().toLowerCase()) && (
                   <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-0.5">
                     <Check className="w-3 h-3" /> Saved
                   </span>
                 )}
               </label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Sarah, Dion, Alex, Karaoke Duet"
-                value={singerName}
-                onChange={(e) => setSingerName(e.target.value)}
-                maxLength={40}
-                className="w-full px-3 py-2 rounded-xl bg-[#131b38] border border-[#202d58] focus:border-sky-500 focus:outline-none text-white text-xs placeholder-slate-500 transition-colors"
-              />
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  confirmSinger();
+                }}
+                className="flex items-center gap-1.5"
+              >
+                <div className="relative flex-1 min-w-0">
+                  <input
+                    type="text"
+                    placeholder="e.g. Sarah, Dion, Alex, Karaoke Duet"
+                    value={singerName}
+                    onChange={(e) => setSingerName(e.target.value)}
+                    maxLength={40}
+                    className="w-full pl-3 pr-9 py-2 rounded-xl bg-[#131b38] border border-[#202d58] focus:border-sky-500 focus:outline-none text-white text-xs placeholder-slate-500 transition-colors"
+                  />
+                  {savedSingers.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowSingerList((v) => !v)}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#1a254a]"
+                      title="Choose a saved singer"
+                    >
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showSingerList ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={!singerName.trim()}
+                  className="shrink-0 w-9 h-9 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-400/70 text-emerald-300 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+                  title="Save this singer"
+                >
+                  <Check className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSingerName('');
+                    saveSingerName('');
+                  }}
+                  disabled={!singerName}
+                  className="shrink-0 w-9 h-9 rounded-xl bg-[#131b38] hover:bg-rose-950/50 border border-[#202d58] hover:border-rose-500/60 text-slate-400 hover:text-rose-300 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+                  title="Clear name"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </form>
+
+              {/* Saved singers dropdown: tap a name to switch singer, X to remove it */}
+              {showSingerList && savedSingers.length > 0 && (
+                <div className="rounded-xl bg-[#0a0f22] border border-[#202d58] p-1 max-h-56 overflow-y-auto">
+                  <div className="px-2 pt-1 pb-1.5 text-[10px] font-arcade uppercase tracking-widest text-slate-500">
+                    Saved singers
+                  </div>
+                  {savedSingers.map((name) => {
+                    const active = name.toLowerCase() === singerName.trim().toLowerCase();
+                    return (
+                      <div
+                        key={name}
+                        className={`flex items-center gap-1 rounded-lg ${active ? 'bg-sky-950/60 border border-sky-500/50' : 'hover:bg-[#131b38] border border-transparent'}`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => selectSinger(name)}
+                          className="flex-1 min-w-0 text-left px-2.5 py-2 text-xs text-white flex items-center gap-2"
+                        >
+                          <span>🎤</span>
+                          <span className="truncate">{name}</span>
+                          {active && <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeSavedSinger(name)}
+                          className="shrink-0 p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/40"
+                          title={`Remove ${name}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* YouTube Search Bar with Live Autocomplete Suggestions (SIDE-BY-SIDE FLEX: ZERO OVERLAP) */}

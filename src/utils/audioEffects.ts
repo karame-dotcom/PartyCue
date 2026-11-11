@@ -28,23 +28,43 @@ export function unlockAudio() {
   } catch {}
 }
 
-/** Short countdown beep. Use final=true for the higher, longer "go" beep. */
+/** Loud countdown beep. Use final=true for the higher, longer "go" beep. */
 export function playBeep(final = false) {
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const length = final ? 0.45 : 0.15;
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(final ? 1320 : 880, now);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.25, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + length);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + length + 0.02);
+    const length = final ? 0.7 : 0.28;
+    const freq = final ? 1568 : 1046.5; // G6 for "go", C6 for each count
+
+    // Compressor lets us push the level up without harsh clipping
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.setValueAtTime(-10, now);
+    comp.ratio.setValueAtTime(4, now);
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(1.0, now + 0.008);
+    master.gain.setValueAtTime(1.0, now + length * 0.6);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + length);
+    master.connect(comp);
+    comp.connect(ctx.destination);
+
+    // Square wave for punch + sine an octave down for body
+    const layers: Array<[OscillatorType, number, number]> = [
+      ['square', freq, 0.35],
+      ['sine', freq / 2, 0.8],
+      ['triangle', freq, 0.5],
+    ];
+    layers.forEach(([type, f, level]) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(f, now);
+      g.gain.setValueAtTime(level, now);
+      osc.connect(g);
+      g.connect(master);
+      osc.start(now);
+      osc.stop(now + length + 0.02);
+    });
   } catch (err) {
     console.warn('Beep error:', err);
   }
