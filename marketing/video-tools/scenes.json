@@ -1,92 +1,13 @@
 [
- {
-  "id": "s01",
-  "src": "tv",
-  "in": 1.0,
-  "dur": 2.6,
-  "step": "",
-  "title": "You don't need a<br><span>karaoke machine</span>",
-  "sub": ""
- },
- {
-  "id": "s02",
-  "src": "tv",
-  "in": 5.6,
-  "dur": 3.4,
-  "step": "STEP 1",
-  "title": "Open PartyCue<br>on any TV",
-  "sub": "Smart TV, laptop, or projector"
- },
- {
-  "id": "s03",
-  "src": "phone",
-  "in": 9.9,
-  "dur": 2.3,
-  "step": "STEP 2",
-  "title": "Guests scan the QR",
-  "sub": "No app download needed"
- },
- {
-  "id": "s04",
-  "src": "phone",
-  "in": 12.0,
-  "dur": 4.5,
-  "step": "STEP 3",
-  "title": "Queue any song<br>from YouTube",
-  "sub": "Right from your phone"
- },
- {
-  "id": "s05",
-  "src": "tv",
-  "in": 16.6,
-  "dur": 3.6,
-  "step": "STEP 4",
-  "title": "The TV calls<br><span>you up</span>",
-  "sub": "3... 2... 1... sing!"
- },
- {
-  "id": "s06",
-  "src": "tv",
-  "in": 21.0,
-  "dur": 3.0,
-  "step": "",
-  "title": "Sing your heart out",
-  "sub": "Friends vote & cheer from their phones"
- },
- {
-  "id": "s07",
-  "src": "tv",
-  "in": 26.9,
-  "dur": 3.8,
-  "step": "STEP 5",
-  "title": "The <span>AI judge</span><br>scores you",
-  "sub": ""
- },
- {
-  "id": "s08",
-  "src": "tv",
-  "in": 48.0,
-  "dur": 2.4,
-  "step": "",
-  "title": "Then your friend<br>goes next...",
-  "sub": ""
- },
- {
-  "id": "s09",
-  "src": "tv",
-  "in": 55.2,
-  "dur": 3.4,
-  "step": "",
-  "title": "...and the fight<br>for <span>#1</span> begins",
-  "sub": ""
- },
- {
-  "id": "s10",
-  "src": "cta",
-  "in": 0,
-  "dur": 3.4,
-  "step": "",
-  "title": "",
-  "sub": ""
- }
+ {"id":"s01","src":"tv","in":2.0,"dur":2.6,"step":"","title":"You don't need a<br><span>karaoke machine</span>","sub":""},
+ {"id":"s02","src":"tv","in":6.0,"dur":3.4,"step":"STEP 1","title":"Open PartyCue<br>on any TV","sub":"Smart TV, laptop, or projector"},
+ {"id":"s03","src":"phone","in":10.4,"dur":2.6,"step":"STEP 2","title":"Guests scan the QR","sub":"No app download needed"},
+ {"id":"s04","src":"phone","in":13.0,"dur":4.8,"step":"STEP 3","title":"Queue any song<br>from YouTube","sub":"Right from your phone"},
+ {"id":"s05","src":"tv","in":18.0,"dur":3.6,"step":"STEP 4","title":"The announcer<br><span>calls you up</span>","sub":"\"Our next singer... is Jess!\""},
+ {"id":"s05b","src":"tv","in":22.9,"dur":3.4,"step":"","title":"3... 2... 1...<br><span>sing!</span>","sub":""},
+ {"id":"s06","src":"tv","in":26.4,"dur":3.2,"step":"","title":"Sing your heart out","sub":"Friends cheer from their phones"},
+ {"id":"s07","src":"tv","in":31.2,"dur":4.2,"step":"STEP 5","title":"The <span>AI judge</span><br>scores you","sub":"...and says it out loud"},
+ {"id":"s08","src":"tv","in":57.0,"dur":2.6,"step":"","title":"Then your friend<br>goes next...","sub":""},
+ {"id":"s09","src":"tv","in":63.3,"dur":3.8,"step":"","title":"...and the fight<br>for <span>#1</span> begins","sub":""},
+ {"id":"s10","src":"cta","in":0,"dur":3.4,"step":"","title":"","sub":""}
 ]

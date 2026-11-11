@@ -1,0 +1,332 @@
+[
+ {
+  "wall": 1794378708578,
+  "kind": "speech",
+  "text": " ",
+  "t": 6.121
+ },
+ {
+  "wall": 1794378719694,
+  "kind": "speech",
+  "text": "Our next singer, karaoke royalty, is Jess! Singing Bohemian Rhapsody!",
+  "t": 17.237
+ },
+ {
+  "wall": 1794378723451,
+  "kind": "osc",
+  "type": "square",
+  "t": 20.994
+ },
+ {
+  "wall": 1794378723452,
+  "kind": "osc",
+  "type": "sine",
+  "t": 20.995
+ },
+ {
+  "wall": 1794378723453,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 20.996
+ },
+ {
+  "wall": 1794378724453,
+  "kind": "osc",
+  "type": "square",
+  "t": 21.996
+ },
+ {
+  "wall": 1794378724454,
+  "kind": "osc",
+  "type": "sine",
+  "t": 21.997
+ },
+ {
+  "wall": 1794378724454,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 21.997
+ },
+ {
+  "wall": 1794378725454,
+  "kind": "osc",
+  "type": "square",
+  "t": 22.997
+ },
+ {
+  "wall": 1794378725454,
+  "kind": "osc",
+  "type": "sine",
+  "t": 22.997
+ },
+ {
+  "wall": 1794378725454,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 22.997
+ },
+ {
+  "wall": 1794378726453,
+  "kind": "osc",
+  "type": "square",
+  "t": 23.996
+ },
+ {
+  "wall": 1794378726454,
+  "kind": "osc",
+  "type": "sine",
+  "t": 23.997
+ },
+ {
+  "wall": 1794378726454,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 23.997
+ },
+ {
+  "wall": 1794378727453,
+  "kind": "osc",
+  "type": "square",
+  "t": 24.996
+ },
+ {
+  "wall": 1794378727454,
+  "kind": "osc",
+  "type": "sine",
+  "t": 24.997
+ },
+ {
+  "wall": 1794378727454,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 24.997
+ },
+ {
+  "wall": 1794378728462,
+  "kind": "osc",
+  "type": "square",
+  "t": 26.005
+ },
+ {
+  "wall": 1794378728462,
+  "kind": "osc",
+  "type": "sine",
+  "t": 26.005
+ },
+ {
+  "wall": 1794378728462,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 26.005
+ },
+ {
+  "wall": 1794378731220,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 28.763
+ },
+ {
+  "wall": 1794378731340,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 28.883
+ },
+ {
+  "wall": 1794378731460,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 29.003
+ },
+ {
+  "wall": 1794378731580,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 29.123
+ },
+ {
+  "wall": 1794378734817,
+  "kind": "speech",
+  "text": "Somebody call the record label, Jess is ready!",
+  "t": 32.36
+ },
+ {
+  "wall": 1794378739817,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 37.36
+ },
+ {
+  "wall": 1794378739937,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 37.48
+ },
+ {
+  "wall": 1794378740057,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 37.6
+ },
+ {
+  "wall": 1794378740177,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 37.72
+ },
+ {
+  "wall": 1794378740418,
+  "kind": "speech",
+  "text": "Jess, you are now the top 1! You are the karaoke champion!",
+  "t": 37.961
+ },
+ {
+  "wall": 1794378745641,
+  "kind": "speech",
+  "text": "Our next singer, rising pop star, is Carlo! Singing Dancing Queen!",
+  "t": 43.184
+ },
+ {
+  "wall": 1794378749679,
+  "kind": "osc",
+  "type": "square",
+  "t": 47.222
+ },
+ {
+  "wall": 1794378749679,
+  "kind": "osc",
+  "type": "sine",
+  "t": 47.222
+ },
+ {
+  "wall": 1794378749679,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 47.222
+ },
+ {
+  "wall": 1794378750680,
+  "kind": "osc",
+  "type": "square",
+  "t": 48.223
+ },
+ {
+  "wall": 1794378750680,
+  "kind": "osc",
+  "type": "sine",
+  "t": 48.223
+ },
+ {
+  "wall": 1794378750680,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 48.223
+ },
+ {
+  "wall": 1794378751680,
+  "kind": "osc",
+  "type": "square",
+  "t": 49.223
+ },
+ {
+  "wall": 1794378751680,
+  "kind": "osc",
+  "type": "sine",
+  "t": 49.223
+ },
+ {
+  "wall": 1794378751680,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 49.223
+ },
+ {
+  "wall": 1794378752683,
+  "kind": "osc",
+  "type": "square",
+  "t": 50.226
+ },
+ {
+  "wall": 1794378752683,
+  "kind": "osc",
+  "type": "sine",
+  "t": 50.226
+ },
+ {
+  "wall": 1794378752683,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 50.226
+ },
+ {
+  "wall": 1794378753680,
+  "kind": "osc",
+  "type": "square",
+  "t": 51.223
+ },
+ {
+  "wall": 1794378753680,
+  "kind": "osc",
+  "type": "sine",
+  "t": 51.223
+ },
+ {
+  "wall": 1794378753680,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 51.223
+ },
+ {
+  "wall": 1794378754680,
+  "kind": "osc",
+  "type": "square",
+  "t": 52.223
+ },
+ {
+  "wall": 1794378754680,
+  "kind": "osc",
+  "type": "sine",
+  "t": 52.223
+ },
+ {
+  "wall": 1794378754680,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 52.223
+ },
+ {
+  "wall": 1794378760826,
+  "kind": "speech",
+  "text": "Somebody call the record label, Carlo is ready!",
+  "t": 58.369
+ },
+ {
+  "wall": 1794378765827,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 63.37
+ },
+ {
+  "wall": 1794378765935.3901,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 63.47839013671875
+ },
+ {
+  "wall": 1794378766055.3901,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 63.59839013671875
+ },
+ {
+  "wall": 1794378766175.3901,
+  "kind": "osc",
+  "type": "triangle",
+  "t": 63.71839013671875
+ },
+ {
+  "wall": 1794378766427,
+  "kind": "speech",
+  "text": "Carlo, you are now top 2! Keep singing to reach number one!",
+  "t": 63.97
+ }
+]

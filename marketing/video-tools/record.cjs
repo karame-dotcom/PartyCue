@@ -92,6 +92,22 @@ async function stub(ctx) {
   const phStart = (Date.now()-T0)/1000;
   await stub(phCtx);
 
+  const sfx = [];
+  await tvCtx.exposeBinding('__sfx', (_src, e) => { sfx.push({ ...e, t: (e.wall - T0) / 1000 }); });
+  await tvCtx.addInitScript(() => {
+    const orig = AudioScheduledSourceNode.prototype.start;
+    AudioScheduledSourceNode.prototype.start = function (when = 0, ...rest) {
+      try {
+        const ctx = this.context; const lead = Math.max(0, (when || 0) - ctx.currentTime);
+        window.__sfx({ wall: Date.now() + lead * 1000, kind: this instanceof OscillatorNode ? 'osc' : 'buf', type: this.type || '' });
+      } catch (e) {}
+      return orig.call(this, when, ...rest);
+    };
+    if (window.speechSynthesis) {
+      const sp = window.speechSynthesis.speak.bind(window.speechSynthesis);
+      window.speechSynthesis.speak = (u) => { try { window.__sfx({ wall: Date.now(), kind: 'speech', text: u.text }); } catch (e) {} return sp(u); };
+    }
+  });
   const tv = await tvCtx.newPage();
   const ph = await phCtx.newPage();
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -125,7 +141,10 @@ async function stub(ctx) {
   mark('ph_type_name');
   await ph.getByPlaceholder('e.g. Sarah').tap();
   await ph.getByPlaceholder('e.g. Sarah').pressSequentially('Jess', { delay: 140 });
-  await sleep(500);
+  await sleep(300);
+  await ph.getByTitle('Save this singer').tap();
+  mark('ph_name_saved');
+  await sleep(600);
   mark('ph_search');
   await ph.getByPlaceholder('Search song or artist...').tap();
   await ph.getByPlaceholder('Search song or artist...').pressSequentially('Bohemian Rhapsody', { delay: 90 });
@@ -138,8 +157,9 @@ async function stub(ctx) {
   await sleep(1500);
 
   // Guest 2 queues next song while intro counts down
-  await ph.getByPlaceholder('e.g. Sarah').fill('');
+  await ph.getByTitle('Clear name').tap();
   await ph.getByPlaceholder('e.g. Sarah').pressSequentially('Carlo', { delay: 110 });
+  await ph.getByTitle('Save this singer').tap();
   await ph.getByPlaceholder('Search song or artist...').fill('');
   await ph.getByPlaceholder('Search song or artist...').pressSequentially('Dancing Queen', { delay: 70 });
   await ph.getByRole('button', { name: /^Search$/ }).tap();
@@ -179,6 +199,7 @@ async function stub(ctx) {
   mark('end');
   await tv.screenshot({ path: OUT + '/tv_end.png' });
   await ph.screenshot({ path: OUT + '/ph_end.png' });
+  fs.writeFileSync(OUT + '/sfx.json', JSON.stringify(sfx, null, 1));
   fs.writeFileSync(OUT + '/tvf.json', JSON.stringify(tvCast.frames));
   fs.writeFileSync(OUT + '/phf.json', JSON.stringify(phCast.frames));
   await tvCtx.close(); await phCtx.close(); await b.close();

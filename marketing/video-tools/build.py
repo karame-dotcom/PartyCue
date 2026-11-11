@@ -17,5 +17,7 @@ for s in sc:
     cmd += ['-map','[v]','-t',str(d),'-r','30','-c:v','libx264','-preset','medium','-crf','18','-an',out]
     subprocess.run(cmd, check=True); parts.append(out)
 open(f'{E}/list.txt','w').write(''.join(f"file '{p}'\n" for p in parts))
-subprocess.run(['ffmpeg','-y','-loglevel','error','-f','concat','-safe','0','-i',f'{E}/list.txt','-f','lavfi','-i','anullsrc=r=44100:cl=stereo',
-  '-shortest','-c:v','copy','-c:a','aac','-movflags','+faststart',f'{E}/partycue_demo_9x16.mp4'], check=True)
+subprocess.run(['ffmpeg','-y','-loglevel','error','-f','concat','-safe','0','-i',f'{E}/list.txt','-c:v','copy',f'{E}/video_only.mp4'], check=True)
+for wav, out in [('audio_full.wav','partycue_demo_9x16.mp4'), ('audio_sfx.wav','partycue_demo_9x16_sfx_only.mp4')]:
+    subprocess.run(['ffmpeg','-y','-loglevel','error','-i',f'{E}/video_only.mp4','-i',f'{E}/{wav}','-map','0:v','-map','1:a',
+      '-c:v','copy','-af','loudnorm=I=-14:TP=-1.5:LRA=11','-ar','44100','-c:a','aac','-b:a','192k','-ac','2','-shortest','-movflags','+faststart',f'{E}/{out}'], check=True)
