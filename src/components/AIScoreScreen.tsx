@@ -3,6 +3,8 @@ import confetti from 'canvas-confetti';
 import { AIScoreResult } from '../utils/aiScoring';
 import { KaraokeSong, LeaderboardEntry, PerformanceScore } from '../types/karaoke';
 import { playApplause, playFanfare } from '../utils/audioEffects';
+import { speak } from '../utils/voice';
+import { SpokenCaption as Caption } from './SpokenCaption';
 
 interface AIScoreScreenProps {
   song: KaraokeSong;
@@ -27,109 +29,6 @@ const COMPLIMENTS = [
 ];
 
 const ordinalTop = (n: number) => `top ${n}`;
-
-/** Speak a line with the browser's voice. Resolves when finished (or after a timeout fallback). */
-function speak(text: string, onWord: (charIndex: number) => void): { done: Promise<void>; cancel: () => void } {
-  let cancelled = false;
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  const done = new Promise<void>((resolve) => {
-    const fallbackMs = Math.max(2500, text.split(/\s+/).length * 380);
-    const finish = () => {
-      if (timer) clearTimeout(timer);
-      resolve();
-    };
-    timer = setTimeout(finish, fallbackMs + 4000);
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth) throw new Error('no speech');
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.rate = 1;
-      u.pitch = 1.1;
-      u.volume = 1;
-      const voices = synth.getVoices();
-      const preferred =
-        voices.find((v) => /en/i.test(v.lang) && /female|samantha|google us|zira|aria|jenny/i.test(v.name)) ||
-        voices.find((v) => /^en/i.test(v.lang));
-      if (preferred) u.voice = preferred;
-      u.onboundary = (e) => {
-        if (!cancelled) onWord(e.charIndex);
-      };
-      u.onend = () => {
-        if (!cancelled) onWord(text.length);
-        finish();
-      };
-      u.onerror = () => {
-        onWord(text.length);
-        finish();
-      };
-      synth.speak(u);
-      // If the browser refuses to speak (no user interaction yet), reveal the caption on a timer
-      setTimeout(() => {
-        if (!cancelled && !synth.speaking && !synth.pending) {
-          revealOnTimer(text, onWord, () => cancelled).then(finish);
-        }
-      }, 700);
-    } catch {
-      revealOnTimer(text, onWord, () => cancelled).then(finish);
-    }
-  });
-  return {
-    done,
-    cancel: () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-      try {
-        window.speechSynthesis?.cancel();
-      } catch {}
-    },
-  };
-}
-
-function revealOnTimer(text: string, onWord: (i: number) => void, isCancelled: () => boolean): Promise<void> {
-  return new Promise((resolve) => {
-    const starts: number[] = [];
-    text.replace(/\S+/g, (_m, idx: number) => {
-      starts.push(idx);
-      return '';
-    });
-    let i = 0;
-    const step = () => {
-      if (isCancelled()) return resolve();
-      if (i >= starts.length) {
-        onWord(text.length);
-        return resolve();
-      }
-      onWord(starts[i++]);
-      setTimeout(step, 330);
-    };
-    step();
-  });
-}
-
-/** Caption that highlights words as they are spoken. */
-const Caption: React.FC<{ text: string; spokenTo: number }> = ({ text, spokenTo }) => {
-  const parts = text.split(/(\s+)/);
-  let pos = 0;
-  return (
-    <p className="max-w-4xl text-center text-2xl sm:text-4xl font-bold leading-snug px-4">
-      {parts.map((part, i) => {
-        const start = pos;
-        pos += part.length;
-        if (/^\s+$/.test(part)) return <span key={i}>{part}</span>;
-        const said = start <= spokenTo;
-        return (
-          <span
-            key={i}
-            className={`transition-colors duration-200 ${said ? 'text-white drop-shadow-[0_0_18px_rgba(56,189,248,0.6)]' : 'text-slate-600'}`}
-          >
-            {part}
-          </span>
-        );
-      })}
-    </p>
-  );
-};
 
 export const AIScoreScreen: React.FC<AIScoreScreenProps> = ({
   song,

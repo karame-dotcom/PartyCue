@@ -1,8 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Mic2 } from 'lucide-react';
 import { KaraokeSong } from '../types/karaoke';
 import { ThemeStageVisuals } from './ThemeStageVisuals';
 import { playBeep } from '../utils/audioEffects';
+import { speak, speakableTitle } from '../utils/voice';
+import { SpokenCaption } from './SpokenCaption';
+
+const STAGE_TITLES = [
+  'rising pop star',
+  'karaoke royalty',
+  'superstar of the night',
+  'vocal sensation',
+  'the voice of the party',
+  'living legend of the mic',
+  'chart-topping sensation',
+];
 
 interface SongIntroScreenProps {
   song: KaraokeSong;
@@ -15,8 +27,8 @@ interface SongIntroScreenProps {
 
 /**
  * Full-screen "Now Singing" title card shown before each song starts.
- * Displays the singer and song over the active TV theme with a countdown,
- * then calls onDone so playback can begin.
+ * The announcer voice introduces the singer and song (with a live caption),
+ * then a beeping countdown runs and onDone lets playback begin.
  */
 export const SongIntroScreen: React.FC<SongIntroScreenProps> = ({
   song,
@@ -26,31 +38,60 @@ export const SongIntroScreen: React.FC<SongIntroScreenProps> = ({
   seconds = 5,
   onDone,
 }) => {
+  const [phase, setPhase] = useState<'announce' | 'countdown'>('announce');
   const [count, setCount] = useState(seconds);
+  const [spokenTo, setSpokenTo] = useState(-1);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
 
+  const announcement = useMemo(() => {
+    const title = STAGE_TITLES[Math.floor(Math.random() * STAGE_TITLES.length)];
+    const name = (song.singerName || 'our mystery guest').trim();
+    return `Our next singer, ${title}, is ${name}! Singing ${speakableTitle(song.title)}!`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [song.id]);
+
   useEffect(() => {
+    let alive = true;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    setPhase('announce');
+    setSpokenTo(-1);
     setCount(seconds);
-    const startedAt = Date.now();
-    let lastBeep = seconds;
-    playBeep();
-    const timer = setInterval(() => {
-      const left = seconds - Math.floor((Date.now() - startedAt) / 1000);
-      if (left <= 0) {
-        clearInterval(timer);
-        playBeep(true);
-        onDoneRef.current();
-      } else {
-        if (left !== lastBeep) {
-          lastBeep = left;
-          playBeep();
+
+    const startCountdown = () => {
+      if (!alive) return;
+      setPhase('countdown');
+      const startedAt = Date.now();
+      let lastBeep = seconds;
+      playBeep();
+      timer = setInterval(() => {
+        const left = seconds - Math.floor((Date.now() - startedAt) / 1000);
+        if (left <= 0) {
+          if (timer) clearInterval(timer);
+          playBeep(true);
+          onDoneRef.current();
+        } else {
+          if (left !== lastBeep) {
+            lastBeep = left;
+            playBeep();
+          }
+          setCount(left);
         }
-        setCount(left);
-      }
-    }, 100);
-    return () => clearInterval(timer);
-  }, [song.id, seconds]);
+      }, 100);
+    };
+
+    // 1) announcer voice, 2) short pause, 3) beeping countdown
+    const voice = speak(announcement, setSpokenTo);
+    voice.done.then(() => {
+      if (alive) setTimeout(startCountdown, 400);
+    });
+
+    return () => {
+      alive = false;
+      voice.cancel();
+      if (timer) clearInterval(timer);
+    };
+  }, [song.id, seconds, announcement]);
 
   return (
     <div
@@ -88,6 +129,13 @@ export const SongIntroScreen: React.FC<SongIntroScreenProps> = ({
         </h1>
         {song.author && <div className="mt-2 text-slate-400 text-sm sm:text-lg truncate max-w-xl">{song.author}</div>}
 
+        {phase === 'announce' && (
+          <div className="mt-8">
+            <SpokenCaption text={announcement} spokenTo={spokenTo} className="text-xl sm:text-3xl" />
+          </div>
+        )}
+
+        {phase === 'countdown' && (
         <div className="mt-10 flex flex-col items-center">
           <div className="text-[11px] sm:text-xs font-arcade uppercase tracking-[0.35em] text-slate-400 mb-2">
             Starting in
@@ -101,6 +149,7 @@ export const SongIntroScreen: React.FC<SongIntroScreenProps> = ({
             </span>
           </div>
         </div>
+        )}
       </div>
     </div>
   );
