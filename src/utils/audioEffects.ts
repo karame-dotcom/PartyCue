@@ -28,6 +28,28 @@ export function unlockAudio() {
   } catch {}
 }
 
+/** Short countdown beep. Use final=true for the higher, longer "go" beep. */
+export function playBeep(final = false) {
+  try {
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const length = final ? 0.45 : 0.15;
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(final ? 1320 : 880, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.25, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + length);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + length + 0.02);
+  } catch (err) {
+    console.warn('Beep error:', err);
+  }
+}
+
 export function playAirhorn() {
   try {
     const ctx = getAudioContext();

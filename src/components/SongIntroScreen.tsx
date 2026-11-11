@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Mic2 } from 'lucide-react';
 import { KaraokeSong } from '../types/karaoke';
 import { ThemeStageVisuals } from './ThemeStageVisuals';
+import { playBeep } from '../utils/audioEffects';
 
 interface SongIntroScreenProps {
   song: KaraokeSong;
@@ -32,15 +33,22 @@ export const SongIntroScreen: React.FC<SongIntroScreenProps> = ({
   useEffect(() => {
     setCount(seconds);
     const startedAt = Date.now();
+    let lastBeep = seconds;
+    playBeep();
     const timer = setInterval(() => {
       const left = seconds - Math.floor((Date.now() - startedAt) / 1000);
       if (left <= 0) {
         clearInterval(timer);
+        playBeep(true);
         onDoneRef.current();
       } else {
+        if (left !== lastBeep) {
+          lastBeep = left;
+          playBeep();
+        }
         setCount(left);
       }
-    }, 200);
+    }, 100);
     return () => clearInterval(timer);
   }, [song.id, seconds]);
 
