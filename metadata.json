@@ -1,5 +1,5 @@
 {
-  "name": "KaraokeBox Live - Multi-Device YouTube Karaoke System",
+  "name": "PartyCue - Multi-Device YouTube Karaoke",
   "description": "Interactive multi-device Karaoke system with TV host display player, real-time sync queue, and mobile guest remote for queuing verified songs.",
   "requestFramePermissions": [],
   "majorCapabilities": [

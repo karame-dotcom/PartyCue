@@ -174,6 +174,21 @@ export const HostScreen: React.FC<HostScreenProps> = ({ roomId }) => {
     }
   };
 
+  // Remote host pressed "AI Score": end the current song and show its score on the TV
+  const lastScoreRequestRef = useRef<number | null | undefined>(undefined);
+  useEffect(() => {
+    const req = roomState?.scoreRequest ?? null;
+    if (lastScoreRequestRef.current === undefined) {
+      // ignore whatever value was already there when the TV loaded
+      if (roomState) lastScoreRequestRef.current = req;
+      return;
+    }
+    if (req && req !== lastScoreRequestRef.current) {
+      lastScoreRequestRef.current = req;
+      if (currentSong && !scoringData && !casualUpNextData) handleSongEnded();
+    }
+  }, [roomState?.scoreRequest, roomState]);
+
   const handleScoreComplete = () => {
     setScoringData(null);
     skipSong(); // Automatically transitions to next queued song
@@ -328,6 +343,8 @@ export const HostScreen: React.FC<HostScreenProps> = ({ roomId }) => {
                 setDuration(dur);
               }}
               isHostAdmin={true}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={toggleFullscreen}
               isStarred={currentSong ? isStarred(currentSong.videoId) : false}
               onToggleStar={() => {
                 if (currentSong) {
@@ -487,53 +504,6 @@ export const HostScreen: React.FC<HostScreenProps> = ({ roomId }) => {
               )}
             </div>
 
-            {/* Compact Host Control Bar at bottom of Queue Card (AI Score, Disco, Auto-FS, History) */}
-            <div className="pt-2 border-t border-[#1c264a] grid grid-cols-4 gap-1 shrink-0">
-              <button
-                onClick={handleSongEnded}
-                disabled={!currentSong}
-                className="flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-xl bg-[#141c38] hover:bg-[#1a254a] border border-[#232f58] text-sky-200 font-bold font-arcade tracking-wider disabled:opacity-30 disabled:cursor-not-allowed transition-all text-[10px] whitespace-nowrap shadow-sm active:scale-95"
-                title="Trigger AI scoring review"
-              >
-                <Bot className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                <span>AI Score</span>
-              </button>
-
-              <button
-                onClick={() => setDiscoMode((prev) => !prev)}
-                className={`flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-xl border font-bold text-[10px] font-arcade tracking-wider transition-all whitespace-nowrap shadow-sm active:scale-95 ${
-                  discoMode
-                    ? 'bg-sky-600 border-sky-400 text-white'
-                    : 'bg-[#141c38] border-[#232f58] text-slate-300 hover:text-white'
-                }`}
-                title="Toggle Disco strobe lighting"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-sky-300 shrink-0" />
-                <span>Disco</span>
-              </button>
-
-              <button
-                onClick={toggleAutoFullscreen}
-                className={`flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border font-bold text-[10px] font-arcade tracking-wider transition-all whitespace-nowrap shadow-sm active:scale-95 ${
-                  autoFullscreen
-                    ? 'bg-emerald-600/30 border-emerald-400 text-emerald-300'
-                    : 'bg-[#141c38] border-[#232f58] text-slate-400 hover:text-slate-200'
-                }`}
-                title={autoFullscreen ? 'Auto-fullscreen is ON for each song' : 'Enable auto-fullscreen whenever a song starts'}
-              >
-                <Maximize2 className="w-3.5 h-3.5 shrink-0" />
-                <span>{autoFullscreen ? 'FS: ON' : 'FS: OFF'}</span>
-              </button>
-
-              <button
-                onClick={() => setShowHistoryModal(true)}
-                className="flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-xl bg-[#141c38] hover:bg-[#1a254a] border border-[#232f58] text-slate-300 hover:text-sky-300 font-bold font-arcade tracking-wider transition-all text-[10px] whitespace-nowrap shadow-sm active:scale-95"
-                title="Browse previously sung tracks"
-              >
-                <History className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                <span>History ({previousSongs.length})</span>
-              </button>
-            </div>
           </div>
         </aside>
       </main>
@@ -550,14 +520,14 @@ export const HostScreen: React.FC<HostScreenProps> = ({ roomId }) => {
         />
       )}
 
-      {/* AI Performance Score Overlay Screen (Competition Mode: 5s score + 5s ranking) */}
+      {/* Score screen: big score + spoken compliment, then full ranking + spoken rank */}
       {scoringData && (
         <AIScoreScreen
           song={scoringData.song}
           scoreResult={scoringData.scoreResult}
           leaderboard={roomState?.leaderboard || []}
           onComplete={handleScoreComplete}
-          durationSeconds={10}
+          durationSeconds={5}
         />
       )}
 

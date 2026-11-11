@@ -138,6 +138,7 @@ export const GuestRemote: React.FC<GuestRemoteProps> = ({ roomId }) => {
     reorderQueue,
     clearHistory,
     triggerPartyEffect,
+    requestScore,
     setTvBackground,
     claimHostDj,
     releaseHostDj,
@@ -619,6 +620,41 @@ export const GuestRemote: React.FC<GuestRemoteProps> = ({ roomId }) => {
                     title="Blast Airhorn sound on TV"
                   >
                     📢
+                  </button>
+                </div>
+
+                {/* TV controls moved from the TV queue panel: AI Score, Disco, History */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    onClick={() => {
+                      requestScore();
+                      showToast('Scoring this performance on the TV...');
+                    }}
+                    disabled={!roomState?.currentSong}
+                    className="py-1.5 px-2 rounded-lg bg-[#141c38] hover:bg-[#1a254a] border border-[#232f58] text-sky-200 font-bold font-arcade text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+                    title="End the current song and show its score on the TV"
+                  >
+                    <span>🤖</span>
+                    <span>AI Score</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      triggerPartyEffect('disco', singerName || 'Host');
+                      showToast('Disco lights toggled on the TV');
+                    }}
+                    className="py-1.5 px-2 rounded-lg bg-[#141c38] hover:bg-[#1a254a] border border-[#232f58] text-slate-200 font-bold font-arcade text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 transition-all active:scale-95"
+                    title="Toggle disco strobe lights on the TV"
+                  >
+                    <span>🪩</span>
+                    <span>Disco</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('history')}
+                    className="py-1.5 px-2 rounded-lg bg-[#141c38] hover:bg-[#1a254a] border border-[#232f58] text-slate-200 font-bold font-arcade text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 transition-all active:scale-95"
+                    title="See previously sung songs"
+                  >
+                    <span>🕘</span>
+                    <span>History ({previousSongs.length})</span>
                   </button>
                 </div>
 

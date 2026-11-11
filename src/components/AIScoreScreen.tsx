@@ -1,457 +1,279 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { AIScoreResult } from '../utils/aiScoring';
 import { KaraokeSong, LeaderboardEntry, PerformanceScore } from '../types/karaoke';
 import { playApplause, playFanfare } from '../utils/audioEffects';
-import {
-  Trophy,
-  Sparkles,
-  Mic2,
-  Star,
-  FastForward,
-  Bot,
-  Flame,
-  ArrowUp,
-  ArrowDown,
-  Minus,
-  Users,
-  Radio,
-  ChevronRight,
-} from 'lucide-react';
 
 interface AIScoreScreenProps {
   song: KaraokeSong;
   scoreResult: AIScoreResult | PerformanceScore;
   leaderboard?: LeaderboardEntry[];
   onComplete: () => void;
+  /** Minimum seconds each stage (score, ranking) stays on screen. */
   durationSeconds?: number;
 }
+
+const COMPLIMENTS = [
+  'Wow {name}, you are an amazing singer!',
+  'If you were a pop star, I would definitely be your biggest fan!',
+  '{name}, that voice gave me goosebumps!',
+  'Somebody call the record label, {name} is ready!',
+  'That was a concert, not karaoke! Incredible, {name}!',
+  'The whole room is in love with your voice, {name}!',
+  'Encore! Encore! {name}, that was pure magic!',
+  'You just turned this party into a sold-out show!',
+  '{name}, you sing like the radio is jealous of you!',
+  'I would buy a ticket to hear that again, {name}!',
+];
+
+const ordinalTop = (n: number) => `top ${n}`;
+
+/** Speak a line with the browser's voice. Resolves when finished (or after a timeout fallback). */
+function speak(text: string, onWord: (charIndex: number) => void): { done: Promise<void>; cancel: () => void } {
+  let cancelled = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const done = new Promise<void>((resolve) => {
+    const fallbackMs = Math.max(2500, text.split(/\s+/).length * 380);
+    const finish = () => {
+      if (timer) clearTimeout(timer);
+      resolve();
+    };
+    timer = setTimeout(finish, fallbackMs + 4000);
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth) throw new Error('no speech');
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1;
+      u.pitch = 1.1;
+      u.volume = 1;
+      const voices = synth.getVoices();
+      const preferred =
+        voices.find((v) => /en/i.test(v.lang) && /female|samantha|google us|zira|aria|jenny/i.test(v.name)) ||
+        voices.find((v) => /^en/i.test(v.lang));
+      if (preferred) u.voice = preferred;
+      u.onboundary = (e) => {
+        if (!cancelled) onWord(e.charIndex);
+      };
+      u.onend = () => {
+        if (!cancelled) onWord(text.length);
+        finish();
+      };
+      u.onerror = () => {
+        onWord(text.length);
+        finish();
+      };
+      synth.speak(u);
+      // If the browser refuses to speak (no user interaction yet), reveal the caption on a timer
+      setTimeout(() => {
+        if (!cancelled && !synth.speaking && !synth.pending) {
+          revealOnTimer(text, onWord, () => cancelled).then(finish);
+        }
+      }, 700);
+    } catch {
+      revealOnTimer(text, onWord, () => cancelled).then(finish);
+    }
+  });
+  return {
+    done,
+    cancel: () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {}
+    },
+  };
+}
+
+function revealOnTimer(text: string, onWord: (i: number) => void, isCancelled: () => boolean): Promise<void> {
+  return new Promise((resolve) => {
+    const starts: number[] = [];
+    text.replace(/\S+/g, (_m, idx: number) => {
+      starts.push(idx);
+      return '';
+    });
+    let i = 0;
+    const step = () => {
+      if (isCancelled()) return resolve();
+      if (i >= starts.length) {
+        onWord(text.length);
+        return resolve();
+      }
+      onWord(starts[i++]);
+      setTimeout(step, 330);
+    };
+    step();
+  });
+}
+
+/** Caption that highlights words as they are spoken. */
+const Caption: React.FC<{ text: string; spokenTo: number }> = ({ text, spokenTo }) => {
+  const parts = text.split(/(\s+)/);
+  let pos = 0;
+  return (
+    <p className="max-w-4xl text-center text-2xl sm:text-4xl font-bold leading-snug px-4">
+      {parts.map((part, i) => {
+        const start = pos;
+        pos += part.length;
+        if (/^\s+$/.test(part)) return <span key={i}>{part}</span>;
+        const said = start <= spokenTo;
+        return (
+          <span
+            key={i}
+            className={`transition-colors duration-200 ${said ? 'text-white drop-shadow-[0_0_18px_rgba(56,189,248,0.6)]' : 'text-slate-600'}`}
+          >
+            {part}
+          </span>
+        );
+      })}
+    </p>
+  );
+};
 
 export const AIScoreScreen: React.FC<AIScoreScreenProps> = ({
   song,
   scoreResult,
   leaderboard = [],
   onComplete,
-  durationSeconds = 10,
+  durationSeconds = 5,
 }) => {
-  const [timeLeft, setTimeLeft] = useState(durationSeconds);
   const [stage, setStage] = useState<1 | 2>(1);
   const [animatedScore, setAnimatedScore] = useState(0);
+  const [spokenTo, setSpokenTo] = useState(-1);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
-  // Extract rank change details if provided
-  const rankChange = (scoreResult as PerformanceScore).rankChange;
-  const crowdScore = (scoreResult as PerformanceScore).crowdScore;
-  const voteCount = (scoreResult as PerformanceScore).voteCount;
-  const micScore = (scoreResult as PerformanceScore).micScore;
-  const pitchVal = 'pitch' in scoreResult ? scoreResult.pitch : (scoreResult as AIScoreResult).pitchRating;
-  const energyVal = 'energy' in scoreResult ? scoreResult.energy : (scoreResult as AIScoreResult).energyRating;
-  const critiqueText = 'critique' in scoreResult ? scoreResult.critique : (scoreResult as AIScoreResult).comment;
+  const name = song.singerName || 'Superstar';
+  const score = Math.round(scoreResult.score);
 
-  // Grade color helper
-  const getGrade = (score: number) => {
-    if (score >= 98) return { label: 'S+ LEGENDARY', color: 'text-amber-300 border-amber-400 bg-amber-950/80 neon-glow-amber' };
-    if (score >= 94) return { label: 'S SUPERSTAR', color: 'text-fuchsia-300 border-fuchsia-400 bg-fuchsia-950/80 neon-glow-pink' };
-    if (score >= 89) return { label: 'A+ CROWD PLEASER', color: 'text-cyan-300 border-cyan-400 bg-cyan-950/80 neon-glow-cyan' };
-    if (score >= 84) return { label: 'A CERTIFIED BANGER', color: 'text-emerald-300 border-emerald-400 bg-emerald-950/80' };
-    return { label: 'B+ PARTY ANIMAL', color: 'text-purple-300 border-purple-400 bg-purple-950/80' };
-  };
-
-  const gradeInfo = getGrade(scoreResult.score);
-
-  // Compute current singer rank from leaderboard if present
-  const currentRankIndex = leaderboard.findIndex(
-    (entry) =>
-      entry.singerName.toLowerCase() === song.singerName.toLowerCase() &&
-      Math.abs(entry.score - scoreResult.score) < 1
+  const compliment = useMemo(
+    () => COMPLIMENTS[Math.floor(Math.random() * COMPLIMENTS.length)].replace(/\{name\}/g, name),
+    // one compliment per performance
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [song.id]
   );
-  const currentRank = currentRankIndex >= 0 ? currentRankIndex + 1 : (rankChange?.toRank || null);
+
+  // Ranking: make sure this singer is in the list even if the room update hasn't arrived yet
+  const ranking = useMemo(() => {
+    const key = name.trim().toLowerCase();
+    const list = leaderboard.map((e) => ({ name: e.singerName, score: e.score }));
+    const idx = list.findIndex((e) => e.name.trim().toLowerCase() === key);
+    if (idx === -1) list.push({ name, score });
+    else if (list[idx].score < score) list[idx] = { name: list[idx].name, score };
+    list.sort((a, b) => b.score - a.score);
+    return list;
+  }, [leaderboard, name, score]);
+  const myRank = ranking.findIndex((e) => e.name.trim().toLowerCase() === name.trim().toLowerCase()) + 1;
+
+  const rankLine =
+    myRank === 1
+      ? `${name}, you are now the top 1! You are the karaoke champion!`
+      : `${name}, you are now ${ordinalTop(myRank)}! Keep singing to reach number one!`;
 
   useEffect(() => {
-    // Initial celebration
+    let alive = true;
+    let current: { cancel: () => void } | null = null;
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
     playApplause();
-    confetti({
-      particleCount: 120,
-      spread: 90,
-      origin: { y: 0.5 },
-      colors: ['#f59e0b', '#ec4899', '#06b6d4', '#10b981', '#a855f7'],
-    });
+    confetti({ particleCount: 120, spread: 90, origin: { y: 0.55 }, colors: ['#f59e0b', '#ec4899', '#06b6d4', '#a855f7'] });
 
-    // Score counter animation
-    const startTime = Date.now();
-    const animDuration = 1400;
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / animDuration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setAnimatedScore(Math.round(eased * scoreResult.score));
-
-      if (progress >= 1) {
-        clearInterval(interval);
-      }
+    // Count the score up
+    const start = Date.now();
+    const anim = setInterval(() => {
+      const p = Math.min((Date.now() - start) / 1400, 1);
+      setAnimatedScore(Math.round((1 - Math.pow(1 - p, 3)) * score));
+      if (p >= 1) clearInterval(anim);
     }, 25);
 
-    // Switch to Stage 2 (Ranking Update) halfway through
-    const stage2Timer = setTimeout(() => {
-      setStage(2);
-      playFanfare();
-      confetti({
-        particleCount: 160,
-        spread: 120,
-        origin: { y: 0.4 },
-        colors: ['#fbbf24', '#38bdf8', '#f43f5e', '#a855f7'],
-      });
-    }, Math.round((durationSeconds * 1000) / 2));
+    (async () => {
+      // Stage 1: score + compliment
+      await wait(1500);
+      if (!alive) return;
+      const stage1Start = Date.now();
+      const s1 = speak(compliment, setSpokenTo);
+      current = s1;
+      await s1.done;
+      await wait(Math.max(800, durationSeconds * 1000 - (Date.now() - stage1Start)));
+      if (!alive) return;
 
-    // Countdown timer for automatic transition
-    const countdown = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdown);
-          onComplete();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+      // Stage 2: ranking + announcement
+      setStage(2);
+      setSpokenTo(-1);
+      playFanfare();
+      if (myRank === 1) {
+        confetti({ particleCount: 160, spread: 120, origin: { y: 0.4 }, colors: ['#fbbf24', '#38bdf8', '#f43f5e'] });
+      }
+      await wait(600);
+      if (!alive) return;
+      const stage2Start = Date.now();
+      const s2 = speak(rankLine, setSpokenTo);
+      current = s2;
+      await s2.done;
+      await wait(Math.max(1200, durationSeconds * 1000 - (Date.now() - stage2Start)));
+      if (alive) onCompleteRef.current();
+    })();
 
     return () => {
-      clearInterval(interval);
-      clearTimeout(stage2Timer);
-      clearInterval(countdown);
+      alive = false;
+      clearInterval(anim);
+      current?.cancel();
     };
-  }, [scoreResult.score, onComplete]);
+    // run once per performance
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [song.id]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-[#070a14]/95 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-300 overflow-y-auto">
-      {/* Background ambient glow */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-sky-600/15 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber-600/15 rounded-full blur-3xl animate-pulse" />
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070a14]/95 backdrop-blur-xl overflow-hidden animate-in fade-in duration-300 cursor-pointer"
+      onClick={() => {
+        // Clicking anywhere lets the browser speak if it was waiting for an interaction
+        try {
+          window.speechSynthesis?.resume();
+        } catch {}
+      }}
+    >
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-sky-600/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-fuchsia-600/20 rounded-full blur-3xl animate-pulse" />
       </div>
 
-      <div className="relative w-full max-w-4xl bg-[#0e142a] border-2 border-sky-500/50 rounded-3xl p-5 sm:p-7 shadow-2xl overflow-hidden my-auto">
-        {/* Stage Progress Indicator & Mode Badge */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-[#1b2548]">
-          <div className="flex items-center gap-2">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#131b38] border border-sky-400/50 text-sky-300 font-arcade text-xs uppercase tracking-widest shadow-lg">
-              <Bot className="w-4 h-4 text-sky-400 animate-spin" style={{ animationDuration: '6s' }} />
-              <span>COMPETITION KARAOKE</span>
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            </div>
-
-            {/* 2-Stage Step Pills */}
-            <div className="flex items-center gap-1.5 bg-[#0a0e1e] px-2 py-1 rounded-full border border-[#1d274d] text-[10px] font-arcade font-bold">
-              <button
-                onClick={() => setStage(1)}
-                className={`px-2 py-0.5 rounded-full transition-all ${
-                  stage === 1 ? 'bg-sky-500 text-white shadow' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                1. Score Breakdown
-              </button>
-              <span className="text-slate-600">➔</span>
-              <button
-                onClick={() => setStage(2)}
-                className={`px-2 py-0.5 rounded-full transition-all ${
-                  stage === 2 ? 'bg-amber-500 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                2. Ranking Update 🏆
-              </button>
-            </div>
+      {stage === 1 && (
+        <div className="relative z-10 flex flex-col items-center gap-6 animate-in fade-in zoom-in-95 duration-300">
+          <div className="text-amber-300 font-arcade font-black text-2xl sm:text-4xl uppercase tracking-widest">
+            🎤 {name}
           </div>
-
-          {currentRank && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/60 text-amber-300 font-arcade text-xs uppercase font-bold tracking-wider">
-              <Trophy className="w-3.5 h-3.5 text-amber-400" />
-              <span>Party Rank #{currentRank}</span>
-            </div>
-          )}
+          <div className="text-[9rem] sm:text-[13rem] leading-none font-black font-arcade text-transparent bg-clip-text bg-gradient-to-br from-amber-200 via-amber-400 to-pink-500 drop-shadow-[0_0_40px_rgba(251,191,36,0.35)]">
+            {animatedScore}
+          </div>
+          <Caption text={compliment} spokenTo={spokenTo} />
         </div>
+      )}
 
-        {/* Singer and Track Name */}
-        <div className="mb-4 text-center">
-          <div className="inline-flex items-center gap-2 text-amber-400 font-arcade font-bold text-sm uppercase tracking-wider mb-0.5">
-            <Mic2 className="w-4 h-4" />
-            <span>Performer: {song.singerName}</span>
-          </div>
-          <h2 className="text-lg md:text-2xl font-black font-heading text-white truncate max-w-xl mx-auto">
-            {song.title}
-          </h2>
+      {stage === 2 && (
+        <div className="relative z-10 w-full flex flex-col items-center gap-6 px-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="font-heading font-black text-3xl sm:text-5xl text-white tracking-wide">🏆 Ranking</div>
+          <ol className="w-full max-w-xl max-h-[50vh] overflow-y-auto space-y-2 text-xl sm:text-3xl font-bold">
+            {ranking.map((e, i) => {
+              const me = i + 1 === myRank;
+              return (
+                <li
+                  key={`${e.name}-${i}`}
+                  className={`flex items-center gap-4 px-5 py-3 rounded-2xl border ${
+                    me ? 'bg-amber-500/20 border-amber-400 text-amber-200 scale-[1.03]' : 'bg-[#0e142a] border-[#1b2548] text-slate-200'
+                  }`}
+                >
+                  <span className="w-10 font-arcade">{i + 1}.</span>
+                  <span className="flex-1 truncate">{e.name}</span>
+                  <span className="font-arcade text-amber-300">{e.score}</span>
+                </li>
+              );
+            })}
+          </ol>
+          <Caption text={rankLine} spokenTo={spokenTo} />
         </div>
-
-        {/* ========================================================================= */}
-        {/* STAGE 1: SCORE & DETAILED PERFORMANCE BREAKDOWN (FIRST HALF, ~5s) */}
-        {/* ========================================================================= */}
-        {stage === 1 && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-left duration-300">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
-              {/* Left Column: Big Neon Score Dial */}
-              <div className="md:col-span-5 bg-[#0a0e1e] border border-sky-500/30 rounded-2xl p-5 flex flex-col items-center justify-center text-center">
-                <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-full bg-[#070a14] border-4 border-amber-400/80 flex flex-col items-center justify-center shadow-2xl shrink-0 my-2">
-                  <div className="absolute -top-3">
-                    <Trophy className="w-8 h-8 text-amber-400 fill-amber-400 drop-shadow" />
-                  </div>
-                  <div className="text-5xl sm:text-6xl font-black font-arcade text-transparent bg-clip-text bg-gradient-to-br from-amber-200 via-amber-400 to-yellow-500 tracking-tight">
-                    {animatedScore}
-                  </div>
-                  <div className="text-[10px] font-mono text-amber-300/80 uppercase tracking-widest font-bold mt-1">
-                    OUT OF 100
-                  </div>
-                </div>
-
-                <div className={`mt-2 px-4 py-1.5 rounded-full border-2 text-xs font-black font-arcade uppercase tracking-widest ${gradeInfo.color}`}>
-                  {gradeInfo.label}
-                </div>
-              </div>
-
-              {/* Right Column: 4-Item Breakdown + Critique */}
-              <div className="md:col-span-7 bg-[#0a0e1e] border border-sky-500/30 rounded-2xl p-5 flex flex-col justify-between">
-                <div>
-                  <div className="text-xs font-arcade font-bold uppercase tracking-wider text-slate-300 mb-3 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Performance Breakdown</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {/* Audience Crowd Votes */}
-                    <div className="p-2.5 rounded-xl bg-[#111730] border border-sky-500/30">
-                      <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 uppercase">
-                        <span className="flex items-center gap-1">
-                          <Users className="w-3 h-3 text-sky-400" />
-                          <span>Audience Vote</span>
-                        </span>
-                        {voteCount ? (
-                          <span className="text-[9px] text-sky-400 font-bold">{voteCount} votes</span>
-                        ) : null}
-                      </div>
-                      <div className="text-lg font-black font-arcade text-sky-300 mt-1">
-                        {crowdScore ? `${crowdScore}%` : '94% (Live)'}
-                      </div>
-                    </div>
-
-                    {/* Microphone Pitch Detector */}
-                    <div className="p-2.5 rounded-xl bg-[#111730] border border-sky-500/30">
-                      <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 uppercase">
-                        <span className="flex items-center gap-1">
-                          <Radio className="w-3 h-3 text-emerald-400" />
-                          <span>Tune / Pitch</span>
-                        </span>
-                        {micScore ? (
-                          <span className="text-[9px] text-emerald-400 font-bold">Host Mic</span>
-                        ) : null}
-                      </div>
-                      <div className="text-lg font-black font-arcade text-emerald-300 mt-1">
-                        {micScore ? `${micScore}%` : `${pitchVal || 89}%`}
-                      </div>
-                    </div>
-
-                    {/* Stage Energy */}
-                    <div className="p-2.5 rounded-xl bg-[#111730] border border-sky-500/30">
-                      <div className="text-[10px] font-mono text-slate-400 uppercase flex items-center gap-1">
-                        <Flame className="w-3 h-3 text-amber-400" />
-                        <span>Stage Energy</span>
-                      </div>
-                      <div className="text-lg font-black font-arcade text-amber-300 mt-1">
-                        {energyVal || 96}%
-                      </div>
-                    </div>
-
-                    {/* Passion */}
-                    <div className="p-2.5 rounded-xl bg-[#111730] border border-sky-500/30">
-                      <div className="text-[10px] font-mono text-slate-400 uppercase flex items-center gap-1">
-                        <Star className="w-3 h-3 text-fuchsia-400" />
-                        <span>Vocal Passion</span>
-                      </div>
-                      <div className="text-lg font-black font-arcade text-fuchsia-300 mt-1">
-                        100%
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Critique */}
-                <div className="bg-[#111730] border border-sky-400/30 rounded-xl p-3 mt-3">
-                  <div className="text-[10px] font-mono uppercase text-sky-300 font-bold tracking-wider mb-1 flex items-center gap-1.5">
-                    <Sparkles className="w-3 h-3 text-amber-400" />
-                    <span>AI Judge Critique</span>
-                  </div>
-                  <p className="text-xs sm:text-sm font-semibold text-sky-100 italic leading-relaxed">
-                    &ldquo;{critiqueText}&rdquo;
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Stage 1 Progress Banner to Stage 2 */}
-            <div className="p-2.5 rounded-xl bg-gradient-to-r from-sky-950/60 via-[#101735] to-amber-950/60 border border-sky-400/40 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-xs font-arcade text-sky-300">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                <span>Revealing Party Ranking Update & Top 5 in moments...</span>
-              </div>
-              <button
-                onClick={() => setStage(2)}
-                className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold font-arcade tracking-wider uppercase flex items-center gap-1 transition-transform active:scale-95"
-              >
-                <span>Show Ranking</span>
-                <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* STAGE 2: DRAMATIC RANKING UPDATE & HALL OF FAME LEADERBOARD (SECOND HALF, ~5s) */}
-        {/* ========================================================================= */}
-        {stage === 2 && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-right duration-300">
-            {/* Dramatic Ranking Banner: Level Up / Rank Held / New Entry */}
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-500/25 via-[#131b38] to-amber-500/25 border-2 border-amber-400/80 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/30 border border-amber-400 flex items-center justify-center shrink-0 shadow-lg">
-                  {rankChange?.direction === 'up' ? (
-                    <ArrowUp className="w-7 h-7 text-emerald-400 animate-bounce" />
-                  ) : rankChange?.direction === 'down' ? (
-                    <ArrowDown className="w-7 h-7 text-rose-400" />
-                  ) : rankChange?.direction === 'same' ? (
-                    <Minus className="w-7 h-7 text-amber-400" />
-                  ) : (
-                    <Trophy className="w-7 h-7 text-amber-400 animate-pulse" />
-                  )}
-                </div>
-
-                <div>
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-amber-300 font-bold">
-                    OFFICIAL RANKING MOVEMENT
-                  </div>
-                  <div className="text-base sm:text-lg font-black font-arcade text-white tracking-wide">
-                    {rankChange?.message || `🔥 ${song.singerName} secured Rank #${currentRank || 1} on the board!`}
-                  </div>
-                </div>
-              </div>
-
-              {/* Previous vs New Rank Pill */}
-              <div className="flex items-center gap-2 bg-[#090d1c] px-3.5 py-2 rounded-xl border border-amber-400/50 shrink-0">
-                <div className="text-center">
-                  <div className="text-[9px] font-mono text-slate-400 uppercase">Previous</div>
-                  <div className="text-xs font-mono font-bold text-slate-300">
-                    {rankChange?.fromRank ? `#${rankChange.fromRank}` : 'Unranked'}
-                  </div>
-                </div>
-                <span className="text-amber-400 font-bold text-sm">➔</span>
-                <div className="text-center">
-                  <div className="text-[9px] font-mono text-amber-300 uppercase">Current</div>
-                  <div className="text-sm font-arcade font-black text-amber-400">
-                    #{currentRank || 1} 🏆
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Top 5 Singers Hall of Fame */}
-            <div className="bg-[#0a0e1e] border border-amber-500/30 rounded-2xl p-4 sm:p-5">
-              <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-[#1b2548]">
-                <div className="flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-amber-400 fill-amber-400" />
-                  <span className="font-arcade text-xs font-bold text-amber-300 uppercase tracking-wider">
-                    Top 5 Singers Hall of Fame
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono uppercase text-slate-400">Synced Live Across Phones</span>
-              </div>
-
-              {leaderboard.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400 font-mono">
-                  <Flame className="w-6 h-6 text-amber-400/50 mx-auto mb-2 animate-bounce" />
-                  {song.singerName} is the first singer to establish the party high score!
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {leaderboard.slice(0, 5).map((entry, idx) => {
-                    const isCurrent =
-                      entry.singerName.toLowerCase() === song.singerName.toLowerCase() &&
-                      Math.abs(entry.score - scoreResult.score) < 1;
-
-                    const medalIcons = ['🥇', '🥈', '🥉', '4', '5'];
-                    const medalColors = [
-                      'text-amber-300 bg-amber-500/20 border-amber-400/40',
-                      'text-slate-300 bg-slate-500/20 border-slate-400/40',
-                      'text-amber-600 bg-amber-700/20 border-amber-600/40',
-                      'text-sky-300 bg-sky-950/40 border-sky-800/40',
-                      'text-sky-300 bg-sky-950/40 border-sky-800/40',
-                    ];
-
-                    return (
-                      <div
-                        key={`${entry.singerName}-${idx}`}
-                        className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-xs transition-all ${
-                          isCurrent
-                            ? 'bg-amber-500/25 border-amber-400 text-white shadow-xl shadow-amber-500/10 ring-2 ring-amber-400/50 scale-[1.02]'
-                            : 'bg-[#101732] border-[#1d274d] text-slate-200'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span
-                            className={`w-6 h-6 rounded-lg border flex items-center justify-center text-xs font-black font-arcade shrink-0 ${
-                              medalColors[idx] || 'bg-slate-800 border-slate-700 text-slate-300'
-                            }`}
-                          >
-                            {medalIcons[idx]}
-                          </span>
-                          <div className="min-w-0">
-                            <div className="font-bold truncate text-xs flex items-center gap-1.5">
-                              <span>{entry.singerName}</span>
-                              {isCurrent && (
-                                <span className="text-[9px] px-1.5 py-0.2 bg-amber-400 text-slate-950 font-black rounded uppercase">
-                                  JUST SANG
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[10px] text-slate-400 truncate max-w-[200px] sm:max-w-md">
-                              {entry.songTitle}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="font-arcade font-bold text-amber-300 text-base shrink-0">
-                          {entry.score} pts
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Transition Countdown Footer */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 mt-4 border-t border-[#1b2548]">
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping" />
-            <span>Next song starting in {timeLeft}s...</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {stage === 1 && (
-              <button
-                onClick={() => setStage(2)}
-                className="px-3 py-1.5 rounded-xl bg-[#141c38] hover:bg-[#1a254a] text-amber-300 font-bold font-arcade text-xs uppercase tracking-wider border border-[#232f58] transition-all"
-              >
-                Ranking Update ➔
-              </button>
-            )}
-
-            <button
-              onClick={onComplete}
-              className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold font-arcade text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg active:scale-95 transition-all"
-            >
-              <span>Play Next Song Now</span>
-              <FastForward className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

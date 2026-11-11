@@ -94,6 +94,7 @@ interface RoomState {
     energy: number;
     timestamp: number;
   } | null;
+  scoreRequest?: number | null;
   partyEffect?: {
     type: 'airhorn' | 'cheer' | 'applause' | 'confetti' | 'disco';
     singer?: string;
@@ -119,6 +120,31 @@ function broadcastRoomUpdate(roomId: string) {
       clients.delete(client);
     }
   }
+}
+
+// Keep one entry per singer (their best score), ranked high to low — no size limit.
+function recordLeaderboard(room: RoomState, result: PerformanceScore) {
+  const list = room.leaderboard || [];
+  const key = result.singerName.trim().toLowerCase();
+  const existing = list.find((e) => e.singerName.trim().toLowerCase() === key);
+  if (existing) {
+    if (result.score >= existing.score) {
+      existing.score = result.score;
+      existing.songTitle = result.songTitle;
+      existing.rank = result.rank;
+      existing.evaluatedAt = result.evaluatedAt;
+    }
+  } else {
+    list.push({
+      singerName: result.singerName,
+      songTitle: result.songTitle,
+      score: result.score,
+      rank: result.rank,
+      evaluatedAt: result.evaluatedAt,
+    });
+  }
+  list.sort((a, b) => b.score - a.score || a.evaluatedAt - b.evaluatedAt);
+  room.leaderboard = list;
 }
 
 function getOrCreateRoom(roomId: string): RoomState {
@@ -490,16 +516,7 @@ Provide integer ratings (75 to 100) for pitch, energy, and stagePresence.`;
 
       if (room) {
         room.latestScore = scoreResult;
-        if (!room.leaderboard) room.leaderboard = [];
-        room.leaderboard.push({
-          singerName: scoreResult.singerName,
-          songTitle: scoreResult.songTitle,
-          score: scoreResult.score,
-          rank: scoreResult.rank,
-          evaluatedAt: scoreResult.evaluatedAt,
-        });
-        room.leaderboard.sort((a, b) => b.score - a.score);
-        room.leaderboard = room.leaderboard.slice(0, 5);
+        recordLeaderboard(room, scoreResult);
         room.lastUpdated = Date.now();
         broadcastRoomUpdate(room.roomId);
       }
@@ -592,16 +609,7 @@ Provide integer ratings (75 to 100) for pitch, energy, and stagePresence.`;
 
   if (room) {
     room.latestScore = scoreResult;
-    if (!room.leaderboard) room.leaderboard = [];
-    room.leaderboard.push({
-      singerName: scoreResult.singerName,
-      songTitle: scoreResult.songTitle,
-      score: scoreResult.score,
-      rank: scoreResult.rank,
-      evaluatedAt: scoreResult.evaluatedAt,
-    });
-    room.leaderboard.sort((a, b) => b.score - a.score);
-    room.leaderboard = room.leaderboard.slice(0, 5);
+    recordLeaderboard(room, scoreResult);
     room.lastUpdated = Date.now();
     broadcastRoomUpdate(room.roomId);
   }
@@ -790,6 +798,12 @@ app.post('/api/rooms/:roomId/actions', (req: Request, res: Response) => {
       break;
     }
 
+    case 'requestScore': {
+      // Remote host asks the TV to end the current song and show its score
+      if (room.currentSong) room.scoreRequest = Date.now();
+      break;
+    }
+
     case 'clearQueue': {
       room.queue = [];
       break;
@@ -876,7 +890,7 @@ async function startServer() {
   }
 
   app.listen(PORT, HOST, () => {
-    console.log(`🎤 KaraokeBox Live server running on http://${HOST}:${PORT}`);
+    console.log(`🎤 PartyCue server running on http://${HOST}:${PORT}`);
   });
 }
 

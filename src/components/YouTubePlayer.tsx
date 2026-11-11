@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { KaraokeSong } from '../types/karaoke';
-import { Play, Pause, SkipForward, RotateCcw, Volume2, VolumeX, AlertCircle, Disc3, Star } from 'lucide-react';
+import { Play, Pause, SkipForward, RotateCcw, Volume2, VolumeX, AlertCircle, Disc3, Star, Maximize2, Minimize2 } from 'lucide-react';
 
 interface YouTubePlayerProps {
   currentSong: KaraokeSong | null;
@@ -13,6 +13,8 @@ interface YouTubePlayerProps {
   onToggleStar?: () => void;
   /** While true, the current song is loaded but kept paused (e.g. during the intro countdown). */
   holdPlayback?: boolean;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 export interface YTPlayerInstance {
@@ -71,6 +73,8 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   isStarred = false,
   onToggleStar,
   holdPlayback = false,
+  isFullscreen = false,
+  onToggleFullscreen,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayerInstance | null>(null);
@@ -466,6 +470,16 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
                 className="w-14 sm:w-16 h-1 bg-[#1c2548] rounded-lg appearance-none cursor-pointer accent-sky-400"
               />
             </div>
+
+            {onToggleFullscreen && (
+              <button
+                onClick={onToggleFullscreen}
+                title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                className="w-7 h-7 rounded-lg bg-[#141c38] hover:bg-[#1a254a] text-slate-300 hover:text-white border border-[#232f58] flex items-center justify-center transition-all"
+              >
+                {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -278,6 +278,10 @@ export function useKaraokeRoom(roomId: string, isHost: boolean = false) {
     [sendHostAction]
   );
 
+  const requestScore = useCallback(() => {
+    return sendHostAction('requestScore');
+  }, [sendHostAction]);
+
   const clearQueue = useCallback(() => {
     return sendHostAction('clearQueue');
   }, [sendHostAction]);
@@ -338,6 +342,7 @@ export function useKaraokeRoom(roomId: string, isHost: boolean = false) {
     firebaseActive,
     error,
     addSong,
+    requestScore,
     skipSong,
     replaySong,
     deleteSong,

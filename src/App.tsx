@@ -28,7 +28,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('KaraokeBox ErrorBoundary caught an error:', error, errorInfo);
+    console.error('PartyCue ErrorBoundary caught an error:', error, errorInfo);
   }
 
   render() {
@@ -117,7 +117,7 @@ export default function App() {
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="text-slate-200 text-base sm:text-lg">🎤</span>
               <span className="font-heading font-black tracking-wider text-sm sm:text-base text-white">
-                KARAOKEBOX
+                PARTYCUE
               </span>
               <span className="font-heading font-black text-indigo-400 text-[10px] sm:text-xs tracking-wider px-1 sm:px-1.5 py-0.5 rounded bg-indigo-950/60 border border-indigo-500/30">
                 LIVE

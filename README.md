@@ -1,4 +1,4 @@
-# PartyCue — KaraokeBox Live
+# PartyCue
 
 Multi-device YouTube karaoke: open the **TV** view on a big screen, guests scan the QR code to queue songs from their phones, vote on performances, and get an AI judge score.
 
