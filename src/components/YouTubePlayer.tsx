@@ -213,6 +213,18 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     return () => clearTimeout(check);
   }, [holdPlayback, currentSong?.id]);
 
+  // If we had to start muted, the first click/tap/key anywhere on the page turns sound back on
+  useEffect(() => {
+    if (!autoplayMuted) return;
+    const onInteract = () => handleUnmuteAfterAutoplay();
+    document.addEventListener('pointerdown', onInteract, { once: true });
+    document.addEventListener('keydown', onInteract, { once: true });
+    return () => {
+      document.removeEventListener('pointerdown', onInteract);
+      document.removeEventListener('keydown', onInteract);
+    };
+  }, [autoplayMuted]);
+
   const handleUnmuteAfterAutoplay = () => {
     if (!playerRef.current) return;
     try {

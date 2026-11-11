@@ -9,7 +9,7 @@ import { ThemeStageVisuals } from './ThemeStageVisuals';
 import { SongIntroScreen } from './SongIntroScreen';
 import { useKaraokeRoom } from '../hooks/useKaraokeRoom';
 import { useTopHits } from '../hooks/useTopHits';
-import { playAirhorn, playApplause, playFanfare } from '../utils/audioEffects';
+import { playAirhorn, playApplause, playFanfare, unlockAudio } from '../utils/audioEffects';
 import { generateKaraokeScore, AIScoreResult } from '../utils/aiScoring';
 import { KaraokeSong } from '../types/karaoke';
 import {
@@ -63,6 +63,11 @@ export const HostScreen: React.FC<HostScreenProps> = ({ roomId }) => {
   const [showFirebaseModal, setShowFirebaseModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [discoMode, setDiscoMode] = useState(false);
+  // Browsers block sound until the page is clicked once, so the TV asks for one tap up front
+  const [audioUnlocked, setAudioUnlocked] = useState<boolean>(() => {
+    const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+    return Boolean(ua?.hasBeenActive);
+  });
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
@@ -296,6 +301,26 @@ export const HostScreen: React.FC<HostScreenProps> = ({ roomId }) => {
     >
       {/* Visual Party Effects Overlay (Airhorn screen-shake, Applause bubbles, Cheer fanfare) */}
       <PartyEffectsOverlay effect={roomState?.partyEffect} />
+
+      {/* One-time tap to enable sound (video, judge voice and party effects) */}
+      {!audioUnlocked && (
+        <button
+          onClick={() => {
+            unlockAudio();
+            setAudioUnlocked(true);
+          }}
+          className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-5 bg-[#070a14]/95 backdrop-blur-md text-center px-6 cursor-pointer"
+        >
+          <div className="text-6xl animate-bounce">🎤</div>
+          <div className="font-heading font-black text-4xl sm:text-6xl text-white tracking-wide">PartyCue</div>
+          <div className="px-8 py-4 rounded-full bg-gradient-to-r from-sky-500 to-fuchsia-600 text-white font-arcade font-black text-lg sm:text-2xl uppercase tracking-widest shadow-[0_0_40px_rgba(217,70,239,0.45)] animate-pulse">
+            Tap to start the party
+          </div>
+          <div className="text-slate-400 text-sm sm:text-base max-w-md">
+            This turns on the sound for songs, the judge's voice and party effects.
+          </div>
+        </button>
+      )}
 
       {/* Disco Strobe Overlay */}
       {discoMode && (

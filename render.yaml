@@ -3,6 +3,7 @@ services:
     name: partycue
     runtime: node
     plan: free
+    autoDeployTrigger: commit
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /api/rooms/HEALTH

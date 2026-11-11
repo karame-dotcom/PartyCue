@@ -13,6 +13,21 @@ function getAudioContext(): AudioContext {
   return audioCtx;
 }
 
+/** Call from a user click/tap to allow sound effects and the judge voice for this session. */
+export function unlockAudio() {
+  try {
+    getAudioContext();
+  } catch {}
+  try {
+    const synth = window.speechSynthesis;
+    if (synth) {
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      synth.speak(u);
+    }
+  } catch {}
+}
+
 export function playAirhorn() {
   try {
     const ctx = getAudioContext();
