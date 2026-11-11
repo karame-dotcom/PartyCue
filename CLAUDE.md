@@ -28,3 +28,14 @@ When I say "good morning":
 4. Never change the applicationId or signing key for the APK. Increase
    the version with every release.
 5. New work goes on a branch; merge to main only when the build passes.
+6. Live sites must keep working. This project may be deployed on GitHub
+   Pages and/or Render.
+   - Don't change the GitHub Pages settings, base path, or deploy
+     workflow, or Render's build command, start command, render.yaml, or
+     environment variable names, without asking me first.
+   - Never hardcode URLs or keys that the live site gets from environment
+     variables.
+   - Before saying a task is done, confirm the build that GitHub Pages or
+     Render runs will succeed.
+   - During "good night", tell me if anything we changed affects the live
+     site, so I can check it after merging.
