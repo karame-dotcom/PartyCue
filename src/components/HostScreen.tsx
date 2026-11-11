@@ -179,21 +179,6 @@ export const HostScreen: React.FC<HostScreenProps> = ({ roomId }) => {
     }
   };
 
-  // Remote host pressed "AI Score": end the current song and show its score on the TV
-  const lastScoreRequestRef = useRef<number | null | undefined>(undefined);
-  useEffect(() => {
-    const req = roomState?.scoreRequest ?? null;
-    if (lastScoreRequestRef.current === undefined) {
-      // ignore whatever value was already there when the TV loaded
-      if (roomState) lastScoreRequestRef.current = req;
-      return;
-    }
-    if (req && req !== lastScoreRequestRef.current) {
-      lastScoreRequestRef.current = req;
-      if (currentSong && !scoringData && !casualUpNextData) handleSongEnded();
-    }
-  }, [roomState?.scoreRequest, roomState]);
-
   const handleScoreComplete = () => {
     setScoringData(null);
     skipSong(); // Automatically transitions to next queued song

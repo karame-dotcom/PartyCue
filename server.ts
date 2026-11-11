@@ -94,7 +94,6 @@ interface RoomState {
     energy: number;
     timestamp: number;
   } | null;
-  scoreRequest?: number | null;
   partyEffect?: {
     type: 'airhorn' | 'cheer' | 'applause' | 'confetti' | 'disco';
     singer?: string;
@@ -795,12 +794,6 @@ app.post('/api/rooms/:roomId/actions', (req: Request, res: Response) => {
         singer: singer || '',
         timestamp: Date.now(),
       };
-      break;
-    }
-
-    case 'requestScore': {
-      // Remote host asks the TV to end the current song and show its score
-      if (room.currentSong) room.scoreRequest = Date.now();
       break;
     }
 

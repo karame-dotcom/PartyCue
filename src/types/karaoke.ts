@@ -67,7 +67,6 @@ export interface RoomState {
     energy: number;
     timestamp: number;
   } | null;
-  scoreRequest?: number | null;
   partyEffect?: {
     type: 'airhorn' | 'cheer' | 'applause' | 'confetti' | 'disco';
     singer?: string;
